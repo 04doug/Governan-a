@@ -1,0 +1,52 @@
+name: Esteira Segura de Governança (CI/CD)
+
+# 1. GATILHO: O processo só inicia quando alguém altera o código
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ETAPA 1: INTEGRAÇÃO CONTÍNUA (O Robô testa)
+  testes-e-seguranca:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar Código
+        uses: actions/checkout@v3
+      
+      - name: Rodar Testes Unitários
+        run: npm test
+        # Se falhar aqui, a esteira PARA. Ninguém consegue fazer deploy de código quebrado.
+
+      - name: Verificar Vulnerabilidades (Security Scan)
+        run: npm audit
+        # Se tiver brecha de segurança, a esteira PARA.
+
+  # ETAPA 2: DEPLOY EM HOMOLOGAÇÃO (Ambiente de Teste)
+  deploy-homologacao:
+    needs: testes-e-seguranca # Só roda se a etapa anterior passar
+    runs-on: ubuntu-latest
+    environment: 
+      name: staging # Ambiente de Staging/HOM
+    steps:
+      - name: Deploy automático para servidor de testes
+        run: ./script-deploy.sh --target=homologacao
+
+  # ETAPA 3: DEPLOY EM PRODUÇÃO (O "Cofre")
+  deploy-producao:
+    needs: deploy-homologacao # Só roda se HOM estiver ok
+    runs-on: ubuntu-latest
+    
+    # AQUI ESTÁ A GOVERNANÇA:
+    environment: 
+      name: production 
+      # Configuração no GitHub exige "Required Reviewers" (Aprovação Manual)
+    
+    steps:
+      - name: Autenticação Segura (Sem senha visível)
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY_PROD }} # A chave fica num cofre digital, o estagiário não vê
+        run: |
+          echo "Conectando ao servidor de Produção..."
+          ./script-deploy.sh --target=producao
