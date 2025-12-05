@@ -1,4 +1,4 @@
-name: Esteira Segura de Governança (CI/CD)
+name: esteira eegura de governança (CI/CD)
 
 # 1. GATILHO: O processo só inicia quando alguém altera o código
 on:
@@ -17,36 +17,37 @@ jobs:
       
       - name: Rodar Testes Unitários
         run: npm test
-        # Se falhar aqui, a esteira PARA. Ninguém consegue fazer deploy de código quebrado.
+        # se falhar aqui, a esteira simplesmente PARA. ninguém consegue fazer deploy de código quebrado.
 
       - name: Verificar Vulnerabilidades (Security Scan)
         run: npm audit
-        # Se tiver brecha de segurança, a esteira PARA.
+        # se tiver brecha de segurança, a esteira PARA.
 
-  # ETAPA 2: DEPLOY EM HOMOLOGAÇÃO (Ambiente de Teste)
+  # ETAPA 2: deploy em homologação (Ambiente de Teste)
   deploy-homologacao:
     needs: testes-e-seguranca # Só roda se a etapa anterior passar
     runs-on: ubuntu-latest
     environment: 
-      name: staging # Ambiente de Staging/HOM
+      name: staging # ambiente de staging/hom
     steps:
       - name: Deploy automático para servidor de testes
         run: ./script-deploy.sh --target=homologacao
 
-  # ETAPA 3: DEPLOY EM PRODUÇÃO (O "Cofre")
+  # ETAPA 3: deploy em produção (O "Cofre")
   deploy-producao:
-    needs: deploy-homologacao # Só roda se HOM estiver ok
+    needs: deploy-homologacao # só roda se hom estiver ok
     runs-on: ubuntu-latest
     
-    # AQUI ESTÁ A GOVERNANÇA:
+    # aqui ta governança:
     environment: 
       name: production 
-      # Configuração no GitHub exige "Required Reviewers" (Aprovação Manual)
+      # configuração no GitHub exige "Required Reviewers" (Aprovação Manual)
     
     steps:
       - name: Autenticação Segura (Sem senha visível)
         env:
-          SSH_KEY: ${{ secrets.SSH_KEY_PROD }} # A chave fica num cofre digital, o estagiário não vê
+          SSH_KEY: ${{ secrets.SSH_KEY_PROD }} # a chave fica num cofre digital, o estagiário não vê
         run: |
           echo "Conectando ao servidor de Produção..."
+
           ./script-deploy.sh --target=producao
